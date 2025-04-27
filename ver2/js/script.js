@@ -1,7 +1,6 @@
 ﻿document.addEventListener('DOMContentLoaded', function () {
     // Конфигурация API
-   
-    const API_BASE_URL = 'https://cors-anywhere.herokuapp.com/http://192.168.1.125:8000/api/v1';
+    const API_BASE_URL = 'http://192.168.1.125:8000/api/v1';
     const DEFAULT_PAGE_SIZE = 12;
 
     // Элементы DOM
@@ -39,7 +38,7 @@
         currentYear: '',
         currentMinRating: '',
         lastResponse: null,
-        sortBy: 'rating_desc' // Добавляем сортировку по умолчанию
+        sortBy: 'rating_desc'
     };
 
     // Инициализация
@@ -163,10 +162,12 @@
             params.append('page_size', DEFAULT_PAGE_SIZE);
             params.append('sort_by', state.sortBy);
 
-            const response = await fetch(`${API_BASE_URL}/books/?${params.toString()}`);
-            if (!response.ok) throw new Error('Ошибка при загрузке книг');
-
+            const response = await fetch(`${API_BASE_URL}/books?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
             const data = await response.json();
+
             state.lastResponse = data;
 
             if (data.results && data.results.length > 0) {
