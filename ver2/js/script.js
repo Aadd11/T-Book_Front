@@ -138,6 +138,7 @@
     async function fetchBooks(loadMore = false) {
         if (!loadMore) {
             state.books = [];
+            state.currentPage = 1; // Сбрасываем страницу при новом запросе
             renderBooks([]);
         }
 
@@ -146,56 +147,57 @@
         try {
             const params = new URLSearchParams();
 
-            // Добавляем параметры запроса
+            // Параметры запроса
             if (state.currentQuery) params.append('q', state.currentQuery);
             if (state.currentCategory !== 'all') params.append('genre', state.currentCategory);
-
-            // Добавляем фильтры
             if (state.currentYear) {
                 params.append('min_year', state.currentYear);
                 params.append('max_year', state.currentYear);
             }
             if (state.currentMinRating) params.append('min_rating', state.currentMinRating);
 
-            // Добавляем пагинацию и сортировку
+            // Пагинация и сортировка
             params.append('page', state.currentPage);
             params.append('page_size', DEFAULT_PAGE_SIZE);
             params.append('sort_by', state.sortBy);
 
-            const response = await fetch(`${API_BASE_URL}/books?${params.toString()}`);
-            if (!response.ok) {
-                throw new Error(`Ошибка HTTP: ${response.status}`);
-            }
-            const data = await response.json();
+            // Добавляем временную метку для избежания кэширования
+            params.append('_t', Date.now());
 
+            const response = await fetch(`${API_BASE_URL}/books?${params.toString()}`);
+            if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+
+            const data = await response.json();
             state.lastResponse = data;
 
-            if (data.results && data.results.length > 0) {
+            if (data.results?.length > 0) {
                 const newBooks = processBooksData(data.results);
 
-                if (loadMore) {
-                    // Фильтруем дубликаты
-                    const existingIds = state.books.map(book => book.id);
-                    const uniqueNewBooks = newBooks.filter(book => !existingIds.includes(book.id));
+                // Создаем карту существующих ID для быстрой проверки
+                const existingIds = new Set(state.books.map(book => book.id));
 
-                    state.books = [...state.books, ...uniqueNewBooks];
-                } else {
-                    state.books = newBooks;
+                // Фильтруем только действительно новые книги
+                const uniqueNewBooks = newBooks.filter(book => !existingIds.has(book.id));
+
+                if (loadMore && uniqueNewBooks.length === 0) {
+                    // Если все книги дублируются, пробуем следующую страницу
+                    state.currentPage++;
+                    await fetchBooks(true);
+                    return;
                 }
 
+                // Обновляем состояние
+                state.books = loadMore ? [...state.books, ...uniqueNewBooks] : uniqueNewBooks;
                 state.hasMore = (state.currentPage * DEFAULT_PAGE_SIZE) < data.total_hits;
+
                 renderBooks(state.books);
             } else {
                 state.hasMore = false;
-                if (!loadMore) {
-                    renderBooks([]);
-                }
+                if (!loadMore) renderBooks([]);
             }
         } catch (error) {
             console.error('Ошибка при загрузке книг:', error);
-            if (!loadMore) {
-                renderBooks([]);
-            }
+            if (!loadMore) renderBooks([]);
         } finally {
             toggleLoading(false);
         }
@@ -235,7 +237,7 @@
             }
 
             // Заглушка для обложки
-            const placeholderCover = 'https://via.placeholder.com/200x300?text=No+Cover';
+            const placeholderCover = 'image/1.jpg';
 
             return {
                 id: bookData.id,
