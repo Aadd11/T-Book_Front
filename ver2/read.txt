@@ -1,0 +1,184 @@
+# Book Search Service API Specification
+
+Base URL: http://localhost:8000/api/v1
+
+## 1. Search Endpoints
+
+### 1.1 Initiate Search
+- Endpoint: POST /search/
+- Description: Starts a book search process with optional immediate results
+- Request Body:
+  json
+  {
+    "query": "fantasy novels",
+    "page": 1,
+    "page_size": 20
+  }
+  
+- Response:
+  json
+  {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "message": "Search task accepted. Returning initial results...",
+    "initial_results": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "title": "The Hobbit",
+        "authors": [{"id": "...", "name": "J.R.R. Tolkien"}],
+        "genres": [{"id": "...", "name": "Fantasy"}],
+        "average_rating": 4.8,
+        "year_published": 1937
+      }
+    ],
+    "total_hits": 150
+  }
+  
+- Status Codes:
+  - 202 Accepted: Search initiated successfully
+  - 400 Bad Request: Invalid parameters
+
+---
+
+## 2. Book Endpoints
+
+### 2.1 Search Books
+- Endpoint: GET /books/
+- Parameters:
+  - q: Search query string
+  - page: Page number (default: 1)
+  - page_size: Results per page (default: 20, max: 100)
+  - sort_by: Sorting criteria (relevance, rating_desc, year_asc, title_asc)
+  - author: Filter by author name
+  - genre: Filter by genre
+  - min_year: Minimum publication year
+  - max_year: Maximum publication year
+  - min_rating: Minimum average rating (0-10)
+  - language: Filter by language
+
+- Response:
+  json
+  {
+    "results": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "title": "Dune",
+        "authors": [{"id": "...", "name": "Frank Herbert"}],
+        "genres": [{"id": "...", "name": "Science Fiction"}],
+        "year_published": 1965,
+        "average_rating": 4.5
+      }
+    ],
+    "total_hits": 75,
+    "page": 1,
+    "page_size": 20
+  }
+  
+
+### 2.2 Get Book Details
+- Endpoint: GET /books/{book_id}
+- Response:
+  json
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "title": "The Hobbit",
+    "authors": [{"id": "...", "name": "J.R.R. Tolkien"}],
+    "genres": [{"id": "...", "name": "Fantasy"}],
+    "year_published": 1937,
+    "summary": "Bilbo Baggins's journey...",
+    "isbn_13": "9780547928227",
+    "language": "English",
+    "book_size_pages": 310,
+    "average_rating": 4.8
+  }
+  
+
+---
+
+## 3. Utility Endpoints
+
+### 3.1 List Genres
+- Endpoint: GET /utils/genres
+- Response:
+  json
+  [
+    {"id": "...", "name": "Fantasy"},
+    {"id": "...", "name": "Science Fiction"}
+  ]
+  
+
+### 3.2 List Authors
+- Endpoint: GET /utils/authors
+- Response:
+  json
+  [
+    {"id": "...", "name": "J.R.R. Tolkien"},
+    {"id": "...", "name": "Frank Herbert"}
+  ]
+  
+
+---
+
+## Data Models
+
+### Book
+{
+  "id": "UUID",
+  "title": "string",
+  "authors": "Array<Author>",
+  "genres": "Array<Genre>",
+  "year_published": "integer",
+  "summary": "string",
+  "age_rating": "string",
+  "language": "string",
+  "book_size_pages": "integer",
+  "average_rating": "float",
+  "isbn_13": "string"
+}
+
+
+### Author
+{
+  "id": "UUID",
+  "name": "string"
+}
+
+
+### Genre
+{
+  "id": "UUID",
+  "name": "string"
+}
+
+
+---
+
+## Status Codes
+| Code | Description                  |
+|------|------------------------------|
+| 200  | OK                           |
+| 202  | Accepted (background task)   |
+| 400  | Bad Request                  |
+| 404  | Not Found                    |
+| 500  | Internal Server Error        |
+
+---
+
+## Search Parameters
+Sort Options:
+- relevance: Default (Elasticsearch scoring)
+- rating_desc: Highest rated first
+- year_asc: Oldest first
+- title_asc: Alphabetical order
+
+Filter Combinations:
+- Multiple filters are combined with AND logic
+- Date ranges are inclusive
+
+---
+
+## Error Responses
+{
+  "detail": "Error message",
+  "status": 404,
+  "error": "Not Found"
+}
